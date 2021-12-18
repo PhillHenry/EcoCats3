@@ -19,10 +19,14 @@ object MyMain extends IOApp.Simple {
   import dsl.*
   def run: IO[Unit] = {
     val stream: Stream[IO, Client[IO]] = Stream.resource(EmberClientBuilder.default[IO].build)
-    val call: Stream[IO, IO[Unit]] = stream.flatMap { (client: Client[IO]) =>
-      val joke: IO[Joke] = client.expect[Joke](GET(uri"https://icanhazdadjoke.com/"))
-      val printed = joke.flatMap(msg => IO.println(msg))
-      Stream.emit(printed)
+    val call = stream.flatMap { (client: Client[IO]) =>
+      println(s"client = $client")
+      val joke: IO[Joke] = client.expect[Joke](GET(uri"https://icanhazdadjoke.com/")).handleError(t => Joke(t.getMessage))
+      val printed: IO[Unit] = joke.flatMap { msg =>
+        println(s"msg = $msg")
+        IO.println(msg)
+      }.handleError(t => t.printStackTrace())
+      Stream.eval(printed)
     }
     val output: IO[Unit] = call.compile.drain
     output
