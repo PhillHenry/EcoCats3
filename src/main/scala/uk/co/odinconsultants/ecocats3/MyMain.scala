@@ -21,14 +21,16 @@ object MyMain extends IOApp.Simple {
     val stream: Stream[IO, Client[IO]] = Stream.resource(EmberClientBuilder.default[IO].build)
     val call = stream.flatMap { (client: Client[IO]) =>
       println(s"client = $client")
-      val joke: IO[Joke] = client.expect[Joke](GET(uri"https://icanhazdadjoke.com/")).handleError(t => Joke(t.getMessage))
-      val printed: IO[Unit] = joke.flatMap { msg =>
-        println(s"msg = $msg")
-        IO.println(msg)
+      val request: Request[IO] = GET(uri"https://icanhazdadjoke.com/")
+      val joke: Stream[IO, Response[IO]] = client.stream(request)
+      val printed = joke.flatMap { response =>
+        response.body.flatMap { b =>
+          Stream.eval(IO(print(b)))
+        }
       }.handleError(t => t.printStackTrace())
-      Stream.eval(printed)
+      printed
     }
-    val output: IO[Unit] = call.compile.drain
+    val output = call.compile.drain
     output
   }
 }
