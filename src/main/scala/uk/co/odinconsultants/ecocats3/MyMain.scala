@@ -24,8 +24,8 @@ object MyMain extends IOApp.Simple {
       val request: Request[IO] = GET(uri"https://icanhazdadjoke.com/")
       val joke: Stream[IO, Response[IO]] = client.stream(request)
       val printed = joke.flatMap { response =>
-        response.body.flatMap { b =>
-          Stream.eval(IO(print(b)))
+        response.body.chunks.flatMap { chunk =>
+          Stream.eval(IO(print(new String(chunk.toArray))))
         }
       }.handleError(t => t.printStackTrace())
       printed
