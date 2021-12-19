@@ -3,6 +3,7 @@ package uk.co.odinconsultants.ecocats3
 import cats.effect.{Concurrent, IO, IOApp}
 import cats.implicits.*
 import fs2.Stream
+import fs2.Pipe
 import fs2.Chunk
 import io.circe.{Decoder, Encoder}
 import org.http4s.*
@@ -23,20 +24,21 @@ object MyMain extends IOApp.Simple {
 
   def run: IO[Unit] = {
     val stream: Stream[IO, Client[IO]] = Stream.resource(EmberClientBuilder.default[IO].build)
-    val call = stream.flatMap { streamChunks(Request, printChunk) }
+    val call = stream.flatMap { streamChunks(Request, printChunk) }.handleError(t => t.printStackTrace())
     val output = call.compile.drain
     output
   }
 
-  def streamChunks(request: Request[IO], chunking: ChunkFunc): Client[IO] => Stream[IO, Unit] =
+  def streamChunks[T](request: Request[IO], chunking: ChunkFunc[T]): Client[IO] => Stream[IO, T] =
     client =>
-      val joke: Stream[IO, Response[IO]] = client.stream(request)
-      val printed: Stream[IO, Unit] = joke.flatMap { response =>
-        response.body.chunks.flatMap(chunking)
-      }.handleError(t => t.printStackTrace())
-      printed
+      val jokeStream: Stream[IO, Response[IO]] = client.stream(request)
+      chunkingPipe(chunking)(jokeStream)
 
-  type ChunkFunc = Chunk[Byte] => Stream[IO, Unit]
+  def chunkingPipe[T](chunking: ChunkFunc[T]): Pipe[IO, Response[IO], T] = _.flatMap { response =>
+    response.body.chunks.flatMap(chunking)
+  }
 
-  val printChunk: ChunkFunc = chunk => Stream.eval(IO(print(new String(chunk.toArray))))
+  type ChunkFunc[T] = Chunk[Byte] => Stream[IO, T]
+
+  val printChunk: ChunkFunc[Unit] = chunk => Stream.eval(IO(print(new String(chunk.toArray))))
 }
