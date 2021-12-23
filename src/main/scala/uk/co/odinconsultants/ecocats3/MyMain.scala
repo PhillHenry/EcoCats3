@@ -24,15 +24,15 @@ object MyMain extends IOApp.Simple {
 
   def run: IO[Unit] = {
     val stream: Stream[IO, Client[IO]] = Stream.resource(EmberClientBuilder.default[IO].build)
-    val call = stream.flatMap { streamChunks(Request, printChunk) }.handleError(t => t.printStackTrace())
-    val output = call.compile.drain
-    output
+    val responseStream: Stream[IO, Response[IO]] = stream.flatMap( _.stream(Request) )
+    makeCall(responseStream, printChunk)
   }
 
-  def streamChunks[T](request: Request[IO], chunking: ChunkFunc[T]): Client[IO] => Stream[IO, T] =
-    client =>
-      val jokeStream: Stream[IO, Response[IO]] = client.stream(request)
-      chunkingPipe(chunking)(jokeStream)
+  def makeCall[T](responseStream: Stream[IO, Response[IO]], chunking: ChunkFunc[T]): IO[Unit] = {
+    val pipe: Pipe[IO, Response[IO], T] = chunkingPipe(chunking)
+    val call: Stream[IO, T] = pipe(responseStream)
+    call.handleError(t => t.printStackTrace()).compile.drain
+  }
 
   def chunkingPipe[T](chunking: ChunkFunc[T]): Pipe[IO, Response[IO], T] = _.flatMap { response =>
     response.body.chunks.flatMap(chunking)
