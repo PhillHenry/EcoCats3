@@ -1,6 +1,6 @@
 package uk.co.odinconsultants.ecocats3
 
-import cats.effect.{Concurrent, IO, IOApp}
+import cats.effect.{Concurrent, IO, IOApp, Ref}
 import cats.implicits.*
 import fs2.Stream
 import fs2.Pipe
@@ -34,11 +34,39 @@ object MyMain extends IOApp.Simple {
     call.handleError(t => t.printStackTrace()).compile.drain
   }
 
+  def htmlFlag(isText: IO[Ref[IO, Boolean]], c: StreamType): IO[Boolean] = {
+    isText.flatMap { ref =>
+      val flag = if (c == '<') {
+        ref.getAndSet(false)
+      } else if (c == '>') {
+        ref.getAndSet(true)
+      } else {
+        ref.getAndUpdate(identity)
+      }
+      flag
+    }
+  }
+
+  type StreamType = Byte
+
+  def parsing(stream: Stream[IO, Chunk[StreamType]]) = {
+    for {
+      isText <- Stream.emit(Ref.of[IO, Boolean](true))
+      chunk <- stream
+      c <- Stream.chunk(chunk)
+      isHtml <- Stream.emit(htmlFlag(isText, c))
+    } yield {
+      isHtml.map { b =>
+        if (b) c else ""
+      }
+    }
+  }
+
   def chunkingPipe[T](chunking: ChunkFunc[T]): Pipe[IO, Response[IO], T] = _.flatMap { response =>
     response.body.chunks.flatMap(chunking)
   }
 
-  type ChunkFunc[T] = Chunk[Byte] => Stream[IO, T]
+  type ChunkFunc[T] = Chunk[StreamType] => Stream[IO, T]
 
   val printChunk: ChunkFunc[Unit] = chunk => Stream.eval(IO(print(new String(chunk.toArray))))
 }
