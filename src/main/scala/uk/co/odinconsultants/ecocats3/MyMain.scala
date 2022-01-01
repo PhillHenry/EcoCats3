@@ -37,10 +37,13 @@ object MyMain extends IOApp.Simple {
   def htmlFlag(isText: IO[Ref[IO, Boolean]], c: StreamType): IO[Boolean] = {
     isText.flatMap { ref =>
       val flag = if (c == '<') {
+        println(s"Found '<'")
         ref.getAndSet(false)
       } else if (c == '>') {
+        println(s"Found '>'")
         ref.getAndSet(true)
       } else {
+        println(s"Found $c")
         ref.getAndUpdate(identity)
       }
       flag
@@ -54,11 +57,9 @@ object MyMain extends IOApp.Simple {
       isText <- Stream.emit(Ref.of[IO, Boolean](true))
       chunk <- stream
       c <- Stream.chunk(chunk)
-      isHtml <- Stream.emit(htmlFlag(isText, c))
+      isHtml <- Stream.eval(htmlFlag(isText, c))
     } yield {
-      isHtml.map { b =>
-        if (b) c else ""
-      }
+      if (isHtml) "" else c
     }
   }
 

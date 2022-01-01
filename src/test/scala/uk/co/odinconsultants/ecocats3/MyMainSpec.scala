@@ -16,6 +16,7 @@ class MyMainSpec extends CatsEffectSuite:
     assertIO({
       val htmlStream: Stream[IO, StreamType] = Stream.fromIterator[IO](textAsByteArray.iterator, 10)
       val result = MyMain.parsing(htmlStream.chunks).compile.toList
+      println(s"result = $result")
       result
     }, List(IO.pure(textAsByteArray)))
   }
