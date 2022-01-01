@@ -37,14 +37,14 @@ object MyMain extends IOApp.Simple {
   def htmlFlag(isText: IO[Ref[IO, Boolean]], c: StreamType): IO[Boolean] = {
     isText.flatMap { ref =>
       val flag = if (c == '<') {
-        println(s"Found '<'")
-        ref.getAndSet(false)
+        println(s"Found '<' ref = $ref")
+        ref.updateAndGet(_ => false)
       } else if (c == '>') {
-        println(s"Found '>'")
-        ref.getAndSet(true)
+        println(s"Found '>' ref = ${ref.get}")
+        ref.updateAndGet(_ => true)
       } else {
         println(s"Found $c")
-        ref.getAndUpdate(identity)
+        ref.updateAndGet(identity)
       }
       flag
     }
@@ -59,6 +59,7 @@ object MyMain extends IOApp.Simple {
       c <- Stream.chunk(chunk)
       isHtml <- Stream.eval(htmlFlag(isText, c))
     } yield {
+      println(s"isHtml = $isHtml")
       if (isHtml) "" else c
     }
   }
