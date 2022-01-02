@@ -11,14 +11,15 @@ class MyMainSpec extends CatsEffectSuite:
   import MyMain._
 
   test("Parse HTML") {
-    val text = "<li><a href=\"/\">Random joke</a></li>"
-    val textAsByteArray: Array[StreamType] = text.toArray.map(_.toByte)
+    val text = "Random joke"
+    val html = "<li><a href=\"/\">" + text + "</a></li>"
+    val textAsByteArray: Array[StreamType] = html.toArray.map(_.toByte)
     assertIO({
       val htmlStream: Stream[IO, StreamType] = Stream.fromIterator[IO](textAsByteArray.iterator, 10)
       val result = MyMain.parsing(htmlStream.chunks).compile.toList
       println(s"result = $result")
       result
-    }, textAsByteArray.toList)
+    }, text.toList.map(_.toByte))
   }
 
 

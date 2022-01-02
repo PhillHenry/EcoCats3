@@ -34,43 +34,18 @@ object MyMain extends IOApp.Simple {
     call.handleError(t => t.printStackTrace()).compile.drain
   }
 
-  def htmlFlag(isText: IO[Ref[IO, Boolean]], c: StreamType): IO[Boolean] = {
-    isText.flatMap { ref =>
-      adjustFlag(c, ref)
-    }
-  }
-
-  private def adjustFlag(c: StreamType, ref: Ref[IO, Boolean]): IO[Boolean] = {
-    val flag = if (c == '<') {
-      println(s"Found '<' ref = $ref")
-      ref.updateAndGet(_ => false)
-    } else if (c == '>') {
-      println(s"Found '>' ref = ${ref.get}")
-      ref.updateAndGet(_ => true)
-    } else {
-      println(s"Found ${new String(Array(c))}")
-      ref.updateAndGet(identity)
-    }
-    flag
-  }
-
   type StreamType = Byte
 
   def parsing(stream: Stream[IO, Chunk[StreamType]]): Stream[IO, StreamType] = {
-    val seed: IO[Ref[IO, Boolean]] = Ref.of[IO, Boolean](true)
-    val s: Stream[IO, (IO[Ref[IO, Boolean]], StreamType)] = stream.unchunks.evalMapAccumulate(seed){ case (io: IO[Ref[IO, Boolean]], c: StreamType) =>
-      val newRef: IO[Ref[IO, Boolean]] = for {
-        ref <- io
-        flag <- adjustFlag(c, ref)
-        x <- Ref.of[IO, Boolean](flag)
-      } yield {
-        x
-      }
-      val x: IO[(IO[Ref[IO, Boolean]], StreamType)] = newRef.map { case ref => (IO(ref), c) }
-      x
+    val seed = false
+    val s = stream.unchunks.evalMapAccumulate(seed){ case (b: Boolean, c: StreamType) =>
+      val newB = if (c == '<') false else if (c == '>') true else b
+      println(s"c = ${new String(Array(c))} ($c), newB = $newB")
+      IO((newB, if (b) c else -1))
     }
-    s.flatMap { case (acc, x) =>
-      Stream.eval(IO(x))
+    s.flatMap { case (b, x) =>
+      println(s"b = $b")
+      if (b && x != -1) Stream.eval(IO(x)) else Stream.empty
     }
   }
 
