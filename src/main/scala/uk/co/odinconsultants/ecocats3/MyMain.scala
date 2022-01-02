@@ -40,7 +40,7 @@ object MyMain extends IOApp.Simple {
     }
   }
 
-  private def adjustFlag(c: StreamType, ref: Ref[IO, Boolean]) = {
+  private def adjustFlag(c: StreamType, ref: Ref[IO, Boolean]): IO[Boolean] = {
     val flag = if (c == '<') {
       println(s"Found '<' ref = $ref")
       ref.updateAndGet(_ => false)
@@ -56,16 +56,19 @@ object MyMain extends IOApp.Simple {
 
   type StreamType = Byte
 
-  def parsing(stream: Stream[IO, Chunk[StreamType]]) = {
-
-    Stream.repeatEval(Ref.of[IO, Boolean](true)).zip(stream.unchunks).flatMap { case (ref, c) =>
-      for {
-        flag <- Stream.eval(adjustFlag(c, ref))
+//  def parsing(stream: Stream[IO, Chunk[StreamType]]) = {
+  def parsing(stream: Stream[IO, Chunk[StreamType]]): Stream[IO, StreamType] = {
+//    stream.unchunks.evalMapAccumulate(Ref.of[IO, Boolean](true)){ case(ref: IO[Ref[IO, Boolean]], c: StreamType) =>
+    val s = stream.unchunks.evalMapAccumulate(Ref.of[IO, Boolean](true)){ case (io: IO[Ref[IO, Boolean]], c: StreamType) =>
+      val newRef = for {
+        ref <- io
+        flag <- adjustFlag(c, ref)
       } yield {
-        if (flag) "" else c
+        Ref.of[IO, Boolean](flag)
       }
+      newRef.flatMap { case (ref) => IO((ref, c)) }
     }
-
+    s.flatMap { case (acc, x) => Stream.eval(IO(x)) }
   }
 
   def chunkingPipe[T](chunking: ChunkFunc[T]): Pipe[IO, Response[IO], T] = _.flatMap { response =>

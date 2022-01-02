@@ -18,7 +18,7 @@ class MyMainSpec extends CatsEffectSuite:
       val result = MyMain.parsing(htmlStream.chunks).compile.toList
       println(s"result = $result")
       result
-    }, List(IO.pure(textAsByteArray)))
+    }, textAsByteArray.toList)
   }
 
 
