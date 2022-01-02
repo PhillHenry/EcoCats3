@@ -56,19 +56,22 @@ object MyMain extends IOApp.Simple {
 
   type StreamType = Byte
 
-//  def parsing(stream: Stream[IO, Chunk[StreamType]]) = {
   def parsing(stream: Stream[IO, Chunk[StreamType]]): Stream[IO, StreamType] = {
-//    stream.unchunks.evalMapAccumulate(Ref.of[IO, Boolean](true)){ case(ref: IO[Ref[IO, Boolean]], c: StreamType) =>
-    val s = stream.unchunks.evalMapAccumulate(Ref.of[IO, Boolean](true)){ case (io: IO[Ref[IO, Boolean]], c: StreamType) =>
-      val newRef = for {
+    val seed: IO[Ref[IO, Boolean]] = Ref.of[IO, Boolean](true)
+    val s: Stream[IO, (IO[Ref[IO, Boolean]], StreamType)] = stream.unchunks.evalMapAccumulate(seed){ case (io: IO[Ref[IO, Boolean]], c: StreamType) =>
+      val newRef: IO[Ref[IO, Boolean]] = for {
         ref <- io
         flag <- adjustFlag(c, ref)
+        x <- Ref.of[IO, Boolean](flag)
       } yield {
-        Ref.of[IO, Boolean](flag)
+        x
       }
-      newRef.flatMap { case (ref) => IO((ref, c)) }
+      val x: IO[(IO[Ref[IO, Boolean]], StreamType)] = newRef.map { case ref => (IO(ref), c) }
+      x
     }
-    s.flatMap { case (acc, x) => Stream.eval(IO(x)) }
+    s.flatMap { case (acc, x) =>
+      Stream.eval(IO(x))
+    }
   }
 
   def chunkingPipe[T](chunking: ChunkFunc[T]): Pipe[IO, Response[IO], T] = _.flatMap { response =>
