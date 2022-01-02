@@ -36,32 +36,36 @@ object MyMain extends IOApp.Simple {
 
   def htmlFlag(isText: IO[Ref[IO, Boolean]], c: StreamType): IO[Boolean] = {
     isText.flatMap { ref =>
-      val flag = if (c == '<') {
-        println(s"Found '<' ref = $ref")
-        ref.updateAndGet(_ => false)
-      } else if (c == '>') {
-        println(s"Found '>' ref = ${ref.get}")
-        ref.updateAndGet(_ => true)
-      } else {
-        println(s"Found $c")
-        ref.updateAndGet(identity)
-      }
-      flag
+      adjustFlag(c, ref)
     }
+  }
+
+  private def adjustFlag(c: StreamType, ref: Ref[IO, Boolean]) = {
+    val flag = if (c == '<') {
+      println(s"Found '<' ref = $ref")
+      ref.updateAndGet(_ => false)
+    } else if (c == '>') {
+      println(s"Found '>' ref = ${ref.get}")
+      ref.updateAndGet(_ => true)
+    } else {
+      println(s"Found ${new String(Array(c))}")
+      ref.updateAndGet(identity)
+    }
+    flag
   }
 
   type StreamType = Byte
 
   def parsing(stream: Stream[IO, Chunk[StreamType]]) = {
-    for {
-      isText <- Stream.emit(Ref.of[IO, Boolean](true))
-      chunk <- stream
-      c <- Stream.chunk(chunk)
-      isHtml <- Stream.eval(htmlFlag(isText, c))
-    } yield {
-      println(s"isHtml = $isHtml")
-      if (isHtml) "" else c
+
+    Stream.repeatEval(Ref.of[IO, Boolean](true)).zip(stream.unchunks).flatMap { case (ref, c) =>
+      for {
+        flag <- Stream.eval(adjustFlag(c, ref))
+      } yield {
+        if (flag) "" else c
+      }
     }
+
   }
 
   def chunkingPipe[T](chunking: ChunkFunc[T]): Pipe[IO, Response[IO], T] = _.flatMap { response =>
