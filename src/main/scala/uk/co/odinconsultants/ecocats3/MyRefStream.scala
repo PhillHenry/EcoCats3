@@ -8,10 +8,10 @@ object MyRefStream {
   def stateStream: Stream[IO, Boolean] = {
     for {
       ref <- Stream.eval(Ref.of[IO, Boolean](true))
-      values <- Stream.emits(Seq(1,2,3))
+      x <- Stream.emits(Seq(1,2,3))
       changed <- Stream.eval(ref.updateAndGet(x => !x))
     } yield {
-      println(s"changed = $changed")
+      println(s"$x: changed = $changed")
       changed
     }
   }
