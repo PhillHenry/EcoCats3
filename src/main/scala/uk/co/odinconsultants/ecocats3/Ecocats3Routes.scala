@@ -24,7 +24,7 @@ object Ecocats3Routes:
     HttpRoutes.of[F] {
       case GET -> Root / "hello" / name =>
         for {
-          greeting <- H.hello(HelloWorld.Name(name))
-          resp <- Ok(greeting)
+          greeting  <- H.hello(HelloWorld.Name(name))
+          resp      <- Ok(greeting)
         } yield resp
     }

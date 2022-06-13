@@ -23,14 +23,14 @@ object MyMain extends IOApp.Simple {
   val Request: Request[IO] = GET(uri"https://icanhazdadjoke.com/")
 
   def run: IO[Unit] = {
-    val stream: Stream[IO, Client[IO]] = Stream.resource(EmberClientBuilder.default[IO].build)
-    val responseStream: Stream[IO, Response[IO]] = stream.flatMap( _.stream(Request) )
+    val clientStream:   Stream[IO, Client[IO]]    = Stream.resource(EmberClientBuilder.default[IO].build)
+    val responseStream: Stream[IO, Response[IO]]  = clientStream.flatMap( _.stream(Request) )
     makeCall(responseStream, printChunk)
   }
 
   def makeCall[T](responseStream: Stream[IO, Response[IO]], chunking: ChunkFunc[T]): IO[Unit] = {
     val pipe: Pipe[IO, Response[IO], T] = chunkingPipe(chunking)
-    val call: Stream[IO, T] = pipe(responseStream)
+    val call: Stream[IO, T]             = pipe(responseStream)
     call.handleError(t => t.printStackTrace()).compile.drain
   }
 
