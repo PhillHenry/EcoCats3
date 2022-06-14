@@ -23,7 +23,8 @@ object StateExample {
 
   type Event = Int | (String, Int)
 
-  def add(event: Event) = State[Env, Int] { env =>
+  def add(event: Event): State[Env, Int] = State[Env, Int] { env =>
+    println(s"add($event), env = $env")
     event match
       case n: Int => (env, n)
       case (name, n) => (env + (name -> n), n)
@@ -37,7 +38,31 @@ object StateExample {
       _ <- add("y", 3)
       _ <- add("z", 4)
       b <- add("w", 5)
-    yield (b)
+    yield b
 
-  def main(args: Array[String]): Unit = print(loop.run(Map.empty).value)
+  def loopBrief: State[Env, Int] =
+    for
+      _ <- add("x", 3)
+      _ <- add("y", 3)
+      _ <- add("z", 4)
+      b <- add("w", 5)
+    yield b
+
+  def loopBriefDesugared: State[Env, Int] =
+    add("x", 3).flatMap(
+      _ => add("y", 3).flatMap(
+        _ => add("z", 4).flatMap(
+          _ => add("w", 5))))
+
+  def main(args: Array[String]): Unit = {
+    val looped = loop.run(Map.empty)    // this runs nothing!
+    println("------")
+    println(s"value = ${looped.value}") // note that the looped.value is what calls the lazy adds!
+    println("------")
+    val loopedBrief = loopBrief.run(Map.empty)
+    println(s"value = ${loopedBrief.value}")
+    println(loop.run(Map.empty) == loopedBrief)
+    println("------")
+    println(s"desugared value = ${loopBriefDesugared.run(Map.empty).value}")
+  }
 }
