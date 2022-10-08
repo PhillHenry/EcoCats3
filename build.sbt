@@ -2,6 +2,7 @@ val Http4sVersion = "0.23.7"
 val MunitVersion = "0.7.29"
 val LogbackVersion = "1.2.6"
 val MunitCatsEffectVersion = "1.0.6"
+val Fs2KafkaVersion = "3.0.0-M9"
 
 lazy val root = (project in file("."))
   .settings(
@@ -17,6 +18,7 @@ lazy val root = (project in file("."))
       "org.scalameta"   %% "munit"               % MunitVersion           % Test,
       "org.typelevel"   %% "munit-cats-effect-3" % MunitCatsEffectVersion % Test,
       "ch.qos.logback"  %  "logback-classic"     % LogbackVersion,
+      "com.github.fd4s" %% "fs2-kafka"           % Fs2KafkaVersion,
     ),
     testFrameworks += new TestFramework("munit.Framework")
   )
