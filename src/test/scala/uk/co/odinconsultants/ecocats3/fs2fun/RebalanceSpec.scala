@@ -4,10 +4,10 @@ import scala.concurrent.duration.*
 import cats.effect.IO
 import cats.implicits.*
 import fs2.{Chunk, Pipe, Pure, Stream}
-import fs2.kafka.{AutoOffsetReset, CommittableOffset, CommittableProducerRecords, ConsumerSettings, KafkaConsumer}
+import fs2.kafka.{AutoOffsetReset, CommittableOffset, CommittableProducerRecords, ConsumerSettings, KafkaConsumer, ProducerSettings}
 import munit.CatsEffectSuite
 import uk.co.odinconsultants.dreadnought.docker.KafkaAntics
-import uk.co.odinconsultants.dreadnought.docker.KafkaAntics.{consume, produceMessages}
+import uk.co.odinconsultants.dreadnought.docker.KafkaAntics.{consume, produce}
 import com.comcast.ip4s.*
 
 /**
@@ -18,7 +18,7 @@ final class RebalanceSpec extends CatsEffectSuite {
   type Consumer       = KafkaConsumer[IO, String, String]
   type ConsumerStream = Stream[IO, CommittableProducerRecords[IO, String, String]]
 
-  test("rebalance process should consume only once") {
+  test("rebalance process should consume only once".ignore) {
     val topic = "topic"
     KafkaAntics.createCustomTopic(topic, partitions = 6)
     val address = ip"127.0.0.1"
@@ -29,8 +29,11 @@ final class RebalanceSpec extends CatsEffectSuite {
       .chunkN(32)
       .zipLeft(Stream.repeatEval(IO.sleep(50.millis)))
       .map(xs => {
-
-          produceMessages(address, port, topic)
+        val bootstrapServer = s"${address}:${port.value}"
+        val producerSettings: ProducerSettings[IO, String, String] =
+        ProducerSettings[IO, String, String]
+          .withBootstrapServers(bootstrapServer)
+        produce(producerSettings, topic)
       })
       .compile
       .drain
