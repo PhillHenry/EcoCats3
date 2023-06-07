@@ -2,14 +2,14 @@ val Http4sVersion          = "0.23.7"
 val MunitVersion           = "0.7.29"
 val LogbackVersion         = "1.2.6"
 val MunitCatsEffectVersion = "1.0.6"
-val Fs2KafkaVersion        = "3.0.0-M9"
+val Fs2KafkaVersion        = "3.0.1"
 
 lazy val root = (project in file("."))
   .settings(
     organization := "uk.co.odinconsultants",
     name         := "ecocats3",
     version      := "0.0.1-SNAPSHOT",
-    scalaVersion := "3.1.0",
+    scalaVersion := "3.2.1",
     libraryDependencies ++= Seq(
       "org.http4s"            %% "http4s-ember-server" % Http4sVersion,
       "org.http4s"            %% "http4s-ember-client" % Http4sVersion,
